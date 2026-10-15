@@ -60,4 +60,4 @@ A production service would need authenticated users, client-level data isolation
 
 ## License
 
-No license file is currently included. If the repository is made public without a license, visitors can read it but do not have explicit permission to reuse, modify, or redistribute it. Add a license before presenting the project as open source.
+This project is licensed under the MIT License. See [LICENSE](./LICENSE) for details.
