@@ -1,56 +1,63 @@
-# Narrative Reports — MVP v1
+# Narrative Reports
 
-White-labeled client reporting for small agencies and PPC freelancers.
-Upload campaign metrics (CSV) → auto-generated plain-English narrative →
-white-labeled PDF → scheduled generation on the 1st of each month
-(delivery **stubbed** in v1: console log only, no emails ever sent).
+Narrative Reports turns advertising campaign metrics into a plain-English monthly report. It accepts CSV data, calculates account and campaign metrics, highlights data-derived wins and recommendations, and produces a white-labeled PDF.
 
-## Thesis
+## Current status
 
-Small agencies / PPC freelancers bleed 5–15 hrs/month/client on reports
-nobody reads; Supermetrics prices them out from $99+/mo. v1 scopes to
-**DAYS**: ingest campaign data → narrative PDF → scheduled generation.
+This is an early local prototype. It uses in-memory storage that resets when the server restarts. Sample companies, campaign names, and metrics are fictional. No advertising platform is connected, and report delivery is a console log only. Do not enter real client data or rely on the scheduled delivery path in production.
+
+## How it works
+
+1. Create a client and add CSV campaign data.
+2. The CSV parser checks for `campaign`, `spend`, `impressions`, `clicks`, and `conversions` columns. Column order is flexible; blank lines are skipped and invalid rows are reported.
+3. The narrative engine totals spend, impressions, clicks, and conversions, then derives click-through rate, average cost per click, and cost per conversion.
+4. It selects campaign highlights from the uploaded values. It does not add external benchmarks.
+5. The PDF generator applies the client's agency name and color to the report.
+6. The monthly cron route can generate reports for clients marked monthly. Email delivery is stubbed and only writes to the server log.
+
+The app is built with Next.js, React, TypeScript, and PDFKit. Its main pieces are:
+
+- `src/lib/csv.ts`: CSV parsing and validation
+- `src/lib/narrative.ts`: calculations and narrative generation
+- `src/lib/pdf.ts`: white-labeled PDF rendering
+- `src/lib/store.ts`: in-memory sample client store
+- `src/app/api/`: client management, uploads, report generation, and monthly cron routes
+- `public/sample-campaign-data.csv`: fictional sample input
 
 ## Run locally
 
+Requirements: Node.js and npm.
+
 ```bash
 npm install
-npm run dev   # http://localhost:3000
+npm run dev
 ```
 
-Two sample clients ship seeded (BluePeak Outfitters, Harbor & Vale Law —
-fake demo data). Use "Load sample data", "Upload CSV", or paste CSV with
-columns: `campaign, spend, impressions, clicks, conversions`. A sample file
-is at `public/sample-campaign-data.csv`.
+Open http://localhost:3000. Use the sample data, upload a CSV, or paste CSV content. The sample CSV is also available at `/sample-campaign-data.csv`.
 
-## API
+Build and serve a production-mode local instance with:
 
-- `GET/POST /api/clients` — list (row counts) / create `{name, agencyName, primaryColor, contactEmail}`
-- `GET/PUT/DELETE /api/clients/[id]` — read / update white-label settings & schedule / delete
-- `POST /api/clients/[id]/upload` — `{csv: string}` replaces campaign rows
-- `POST /api/clients/[id]/sample` — load built-in sample dataset
-- `GET /api/clients/[id]/narrative` — JSON preview of the generated narrative
-- `GET /api/clients/[id]/report` — white-labeled PDF download
-- `GET /api/cron/monthly-reports` — cron scaffold (1st of month, see vercel.json);
-  generates reports for clients with `schedule: "monthly"` and **stubs** email
-  delivery to the console. Honors `CRON_SECRET` (Bearer) when set.
+```bash
+npm run build
+npm start
+```
 
-## Narrative engine (`src/lib/narrative.ts`)
+## API overview
 
-Everything is derived from the uploaded data — no invented benchmarks:
-summary headline, wins (top converters, best CTR, efficient spend), and
-recommendations (big spenders with zero conversions, below-average CTR,
-expensive converters, efficient campaigns worth scaling).
+- `GET/POST /api/clients`: list clients or create one
+- `GET/PUT/DELETE /api/clients/[id]`: read, update, or delete a client
+- `POST /api/clients/[id]/upload`: replace a client's campaign rows from CSV
+- `POST /api/clients/[id]/sample`: load the sample dataset
+- `GET /api/clients/[id]/narrative`: return a JSON narrative preview
+- `GET /api/clients/[id]/report`: download a generated PDF
+- `GET /api/cron/monthly-reports`: generate reports for monthly clients and log the delivery stub
 
-## v1 boundaries (guardrails)
+The cron route checks the `CRON_SECRET` bearer token when that variable is set. Configure a secret before exposing the route on a network.
 
-- No emails/SMS are ever sent — `sendReportEmailStub` only logs.
-- No real customer data (seed data is fictional).
-- No Google Ads API — CSV ingest only.
-- No new accounts, purchases, or paid services.
-- In-memory store: data resets on server restart.
+## Before using real client data
 
-## v2 ideas
+A production service would need authenticated users, client-level data isolation, persistent storage, input-size limits, secure scheduling, and an actual delivery provider. The current prototype does not provide these protections or integrations.
 
-File/DB persistence, agency logo upload in PDF, real email delivery
-(Resend/SES) with approval, Google Ads API ingest, PDF preview in browser.
+## License
+
+This project is licensed under the MIT License. See [LICENSE](./LICENSE) for details.
